@@ -1,0 +1,45 @@
+http:
+  routers:
+    docs:
+      rule: PathPrefix(`/`)
+      service: docs
+      middlewares:
+        - index
+        - markdown
+
+    # The same files, with another style and line numbers.
+    docs-dark:
+      rule: PathPrefix(`/dark`)
+      service: docs
+      middlewares:
+        - index
+        - strip-dark
+        - markdown-dark
+
+  middlewares:
+    index:
+      redirectRegex:
+        regex: ^(https?://[^/]+(/dark)?)/?$
+        replacement: ${1}/index.md
+
+    strip-dark:
+      stripPrefix:
+        prefixes:
+          - /dark
+
+    markdown:
+      plugin:
+        markdown:
+          style: github
+
+    markdown-dark:
+      plugin:
+        markdown:
+          style: monokai
+          lineNumbers: true
+
+  services:
+    docs:
+      loadBalancer:
+        servers:
+          - url: http://docs:80

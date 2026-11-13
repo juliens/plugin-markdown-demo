@@ -1,0 +1,30 @@
+# Traefik with Yaegi v2 support is not released yet.
+# This image builds Traefik from the branch that adds it.
+FROM golang:1.27.3-alpine AS build
+
+RUN apk add --no-cache git
+
+ARG TRAEFIK_REPO=https://github.com/juliens/traefik.git
+# Branch yaegi-v2-integration.
+ARG TRAEFIK_REF=a69d8be1f086889fa7f81d21af94bb419e503a62
+
+WORKDIR /src
+RUN git init -q \
+    && git remote add origin "${TRAEFIK_REPO}" \
+    && git fetch -q --depth 1 origin "${TRAEFIK_REF}" \
+    && git checkout -q FETCH_HEAD
+
+# The web UI is not needed for the demo: an empty page is enough for the build.
+RUN mkdir -p webui/static && echo '<!DOCTYPE html><title>Traefik</title>' > webui/static/index.html
+
+# The Go version must match the AOT copies of Yaegi v2 (go1.27.3).
+RUN --mount=type=cache,target=/root/go/pkg/mod \
+    --mount=type=cache,target=/root/.cache/go-build \
+    CGO_ENABLED=0 go build -trimpath -ldflags "-s -w" -o /traefik ./cmd/traefik
+
+FROM alpine:3.22
+
+RUN apk add --no-cache ca-certificates
+COPY --from=build /traefik /usr/local/bin/traefik
+
+ENTRYPOINT ["traefik"]

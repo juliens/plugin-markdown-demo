@@ -72,6 +72,13 @@ func (m *Markdown) ServeHTTP(rw http.ResponseWriter, req *http.Request) {
 		return
 	}
 
+	// The page is built from the whole file: the backend must not answer
+	// 304 Not Modified or a part of the file.
+	req = req.Clone(req.Context())
+	for _, name := range conditionalHeaders {
+		req.Header.Del(name)
+	}
+
 	rec := &recorder{header: http.Header{}, status: http.StatusOK}
 	m.next.ServeHTTP(rec, req)
 
@@ -103,11 +110,21 @@ func (m *Markdown) ServeHTTP(rw http.ResponseWriter, req *http.Request) {
 		rw.Header()[key] = values
 	}
 
+	// These headers describe the Markdown file, not the HTML page.
+	for _, name := range fileHeaders {
+		rw.Header().Del(name)
+	}
+
 	rw.Header().Set("Content-Type", "text/html; charset=utf-8")
 	rw.Header().Set("Content-Length", strconv.Itoa(page.Len()))
 	rw.WriteHeader(http.StatusOK)
 	_, _ = rw.Write(page.Bytes())
 }
+
+var (
+	conditionalHeaders = []string{"If-Modified-Since", "If-None-Match", "If-Range", "Range", "Accept-Encoding"}
+	fileHeaders        = []string{"ETag", "Last-Modified", "Accept-Ranges", "Content-Range", "Content-Encoding", "Content-Length"}
+)
 
 // recorder keeps the response of the backend.
 type recorder struct {
@@ -144,6 +161,7 @@ var pageTemplate = template.Must(template.New("page").Parse(`<!DOCTYPE html>
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>{{ .Title }}</title>
 <style>
+html { background: #fff; color-scheme: light; }
 body { max-width: 860px; margin: 2rem auto; padding: 0 1rem; font-family: system-ui, sans-serif; line-height: 1.6; color: #1f2328; }
 pre { padding: 1rem; overflow-x: auto; border-radius: 6px; }
 code { font-family: ui-monospace, monospace; font-size: 0.9em; }

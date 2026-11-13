@@ -1,0 +1,18 @@
+entryPoints:
+  web:
+    address: ":80"
+
+providers:
+  file:
+    filename: /etc/traefik/dynamic.yml
+    watch: true
+
+experimental:
+  localPlugins:
+    markdown:
+      moduleName: github.com/juliens/plugin-markdown-demo
+
+log:
+  level: INFO
+
+accessLog: {}

@@ -89,6 +89,41 @@ func TestMarkdown_errorStatus(t *testing.T) {
 	}
 }
 
+func TestMarkdown_cacheHeaders(t *testing.T) {
+	next := http.HandlerFunc(func(rw http.ResponseWriter, req *http.Request) {
+		if req.Header.Get("If-None-Match") != "" || req.Header.Get("If-Modified-Since") != "" {
+			rw.WriteHeader(http.StatusNotModified)
+			return
+		}
+
+		rw.Header().Set("ETag", `"file-etag"`)
+		rw.Header().Set("Last-Modified", "Mon, 02 Jan 2006 15:04:05 GMT")
+		_, _ = rw.Write([]byte("# Title"))
+	})
+
+	handler, err := markdown.New(context.Background(), next, markdown.CreateConfig(), "markdown")
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	req := httptest.NewRequest(http.MethodGet, "/a.md", nil)
+	req.Header.Set("If-None-Match", `"file-etag"`)
+	req.Header.Set("If-Modified-Since", "Mon, 02 Jan 2006 15:04:05 GMT")
+
+	rec := httptest.NewRecorder()
+	handler.ServeHTTP(rec, req)
+
+	if rec.Code != http.StatusOK {
+		t.Fatalf("status: got %d, want %d: the page must not use the cache of the Markdown file", rec.Code, http.StatusOK)
+	}
+
+	for _, name := range []string{"ETag", "Last-Modified"} {
+		if v := rec.Header().Get(name); v != "" {
+			t.Errorf("header %s: got %q, want it removed", name, v)
+		}
+	}
+}
+
 func TestNew_unknownStyle(t *testing.T) {
 	cfg := markdown.CreateConfig()
 	cfg.Style = "does-not-exist"
