@@ -1,0 +1,13 @@
+displayName: Markdown Demo
+type: middleware
+# Run this plugin with Yaegi v2. Without this line, Traefik uses Yaegi v1.
+runtimeVersion: v2
+
+import: github.com/juliens/plugin-markdown-demo
+basePkg: markdown
+
+summary: Demo of a Yaegi v2 plugin with large libraries. It renders the Markdown files served by the backend as HTML, with syntax highlighting.
+
+testData:
+  style: github
+  lineNumbers: false

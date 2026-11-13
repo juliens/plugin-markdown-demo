@@ -1,0 +1,59 @@
+name: Main
+
+on:
+  push:
+    branches:
+      - main
+  pull_request:
+
+permissions:
+  contents: read
+
+jobs:
+  test:
+    name: Lint and test
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v5
+
+      - uses: actions/setup-go@v6
+        with:
+          go-version-file: go.mod
+
+      - name: Lint
+        uses: golangci/golangci-lint-action@v9
+        with:
+          version: v2.15
+
+      - name: Test
+        run: go test -v -race ./...
+
+      # Traefik reads the dependencies of a plugin from its vendor directory.
+      - name: Check go.mod and vendor
+        run: |
+          go mod tidy
+          go mod vendor
+          git diff --exit-code go.mod go.sum vendor
+
+  yaegi:
+    name: Run with Yaegi v2
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v5
+
+      # The AOT copies of Yaegi v2 are made with one Go patch release:
+      # use the version of the yaegi/v2 module set in .github/plugincheck/go.mod.
+      - uses: actions/setup-go@v6
+        with:
+          go-version: "1.27.3"
+          cache-dependency-path: .github/plugincheck/go.sum
+
+      # The same checks as the Traefik Plugin Catalog, then a load with Yaegi v2
+      # and the rendering of a Markdown file, as Traefik does.
+      - name: Check the plugin
+        working-directory: .github/plugincheck
+        run: >-
+          go run . -dir ../.. -repo "${{ github.repository }}"
+          -request /docs/sample.md
+          -body ../../testdata/sample.md
+          -contains '<span style="color:#cf222e">func</span>'
