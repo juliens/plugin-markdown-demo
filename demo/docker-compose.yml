@@ -3,17 +3,16 @@ services:
     build:
       context: .
       dockerfile: Dockerfile.traefik
-    image: traefik-yaegi-v2:local
+    image: traefik:v3.8.0-rc.3-local
     command:
       - --configFile=/etc/traefik/traefik.yml
     ports:
       - "8000:80"
-    working_dir: /
+      # The dashboard.
+      - "8081:8080"
     volumes:
       - ./traefik.yml:/etc/traefik/traefik.yml:ro
       - ./dynamic.yml:/etc/traefik/dynamic.yml:ro
-      # The plugin sources, as a local plugin: ./plugins-local/src/<moduleName>.
-      - ..:/plugins-local/src/github.com/juliens/plugin-markdown-demo:ro
 
   # A plain file server: it knows nothing about Markdown.
   docs:

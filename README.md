@@ -64,7 +64,7 @@ Without this line, Traefik runs the plugin with Yaegi v1, and the plugin does no
 
 ## Run the demo
 
-The [`demo`](demo) directory runs Traefik with this plugin as a local plugin, in front of an nginx that serves a few Markdown files.
+The [`demo`](demo) directory runs Traefik with this plugin from the Plugin Catalog, in front of an nginx that serves a few Markdown files.
 
 ```bash
 cd demo && docker compose up --build
@@ -75,8 +75,10 @@ Then open http://localhost:8000.
 - `/` renders the pages with the `github` style.
 - `/dark/` renders the same pages with the `monokai` style and line numbers.
 - Edit a file in `demo/docs`, then reload the page.
+- The Traefik dashboard is on http://localhost:8081.
 
-No Traefik release supports Yaegi v2 yet: [`demo/Dockerfile.traefik`](demo/Dockerfile.traefik) builds Traefik from the branch that adds it (about 2 minutes the first time).
+Traefik v3.8.0-rc.3 is the first version with Yaegi v2 support.
+[`demo/Dockerfile.traefik`](demo/Dockerfile.traefik) builds it from its tag, with the web UI, as `make binary` does (about 4 minutes the first time).
 
 ## Configuration
 

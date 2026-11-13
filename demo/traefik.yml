@@ -2,15 +2,20 @@ entryPoints:
   web:
     address: ":80"
 
+api:
+  insecure: true
+
 providers:
   file:
     filename: /etc/traefik/dynamic.yml
     watch: true
 
+# The plugin comes from the Traefik Plugin Catalog.
 experimental:
-  localPlugins:
+  plugins:
     markdown:
       moduleName: github.com/juliens/plugin-markdown-demo
+      version: v0.1.0
 
 log:
   level: INFO

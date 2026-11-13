@@ -1,30 +1,52 @@
-# Traefik with Yaegi v2 support is not released yet.
-# This image builds Traefik from the branch that adds it.
-FROM golang:1.27.3-alpine AS build
+# syntax=docker/dockerfile:1
+
+# Traefik v3.8.0-rc.3, the first release with Yaegi v2 support.
+# Built as "make binary" does: the web UI, then the binary.
+
+ARG TRAEFIK_VERSION=v3.8.0-rc.3
+
+FROM alpine:3.24 AS source
 
 RUN apk add --no-cache git
 
-ARG TRAEFIK_REPO=https://github.com/juliens/traefik.git
-# Branch yaegi-v2-integration.
-ARG TRAEFIK_REF=a69d8be1f086889fa7f81d21af94bb419e503a62
+ARG TRAEFIK_VERSION
+RUN git clone -q --depth 1 --branch "${TRAEFIK_VERSION}" https://github.com/traefik/traefik.git /src
+
+FROM node:26-alpine3.24 AS webui
+
+ENV VITE_APP_BASE_URL=""
+ENV VITE_APP_BASE_API_URL="/api"
+
+WORKDIR /src/webui
+COPY --from=source /src/webui/package.json /src/webui/yarn.lock /src/webui/.yarnrc.yml ./
+RUN npm i -g corepack@0.36.0 --ignore-scripts
+RUN yarn workspaces focus --all --production
+
+COPY --from=source /src/webui ./
+RUN yarn build
+
+# The Go version must match the AOT copies of Yaegi v2 in this Traefik version (go1.27.4).
+FROM golang:1.27.4-alpine AS build
+
+COPY --from=source /src /src
+COPY --from=webui /src/webui/static /src/webui/static
 
 WORKDIR /src
-RUN git init -q \
-    && git remote add origin "${TRAEFIK_REPO}" \
-    && git fetch -q --depth 1 origin "${TRAEFIK_REF}" \
-    && git checkout -q FETCH_HEAD
-
-# The web UI is not needed for the demo: an empty page is enough for the build.
-RUN mkdir -p webui/static && echo '<!DOCTYPE html><title>Traefik</title>' > webui/static/index.html
-
-# The Go version must match the AOT copies of Yaegi v2 (go1.27.3).
-RUN --mount=type=cache,target=/root/go/pkg/mod \
+ARG TRAEFIK_VERSION
+RUN --mount=type=cache,target=/go/pkg/mod \
     --mount=type=cache,target=/root/.cache/go-build \
-    CGO_ENABLED=0 go build -trimpath -ldflags "-s -w" -o /traefik ./cmd/traefik
+    CGO_ENABLED=0 go build -trimpath -ldflags "-s -w \
+    -X github.com/traefik/traefik/v3/pkg/version.Version=${TRAEFIK_VERSION} \
+    -X github.com/traefik/traefik/v3/pkg/version.Codename=cheddar" \
+    -o /traefik ./cmd/traefik
 
-FROM alpine:3.22
+# Same image as the official one.
+FROM alpine:3.24
 
-RUN apk add --no-cache ca-certificates
-COPY --from=build /traefik /usr/local/bin/traefik
+RUN apk add --no-cache --no-progress ca-certificates tzdata
+COPY --from=build /traefik /
 
-ENTRYPOINT ["traefik"]
+EXPOSE 80
+VOLUME ["/tmp"]
+
+ENTRYPOINT ["/traefik"]
