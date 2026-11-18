@@ -2,7 +2,7 @@
 
 A demo of a Traefik plugin that runs large libraries with [Yaegi v2](https://github.com/traefik/yaegi/tree/v2).
 
-Yaegi v2 is experimental, and Traefik supports it only on a development branch for now.
+Yaegi v2 comes with Traefik v3.8. It is opt-in: Traefik uses it for a plugin that asks for it in its manifest.
 
 The middleware renders the Markdown files served by the backend as HTML pages:
 
